@@ -5,11 +5,26 @@
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint"
+    "lint": "vue-cli-service lint",
+    "deploy": "aws --region us-west-2 --profile sports-exchange s3 sync ./dist s3://serverless-react-sports-serverlessdeploymentbuck-kj23yr3zm351 --delete"
   },
   "dependencies": {
+    "@auth0/auth0-spa-js": "^1.17.0",
+    "apollo-cache-inmemory": "^1.6.5",
+    "apollo-client": "^2.6.8",
+    "apollo-link-context": "^1.0.20",
+    "apollo-link-error": "^1.1.13",
+    "apollo-link-http": "^1.5.16",
     "core-js": "^3.6.5",
-    "vue": "^2.6.11"
+    "file-saver": "^2.0.5",
+    "graphql": "^14.6.0",
+    "graphql-tag": "^2.10.3",
+    "html-loader": "^0.5.5",
+    "luxon": "^1.23.0",
+    "vue": "^2.6.11",
+    "vue-material": "^1.0.0-beta-15",
+    "vue-router": "^3.1.5",
+    "xlsx": "^0.17.1"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "~4.5.0",
