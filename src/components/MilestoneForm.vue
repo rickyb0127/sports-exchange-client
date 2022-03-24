@@ -32,10 +32,8 @@
 </template>
 
 <script>
-/* eslint-disable */
 import { apolloClient } from "../main";
 import gql from 'graphql-tag';
-import { parse } from 'graphql';
 
 export default {
   name: "MilestoneForm",
@@ -183,7 +181,7 @@ export default {
           milestoneInput: parsedMilestoneInput
         }
         try {
-          const response = await apolloClient.mutate({
+          await apolloClient.mutate({
           fetchPolicy: 'no-cache',
             mutation: gql`
               mutation createOrUpdateMilestoneData($input: TournamentTeamMilestoneInput!) {

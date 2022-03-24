@@ -76,13 +76,10 @@
         <md-table-cell md-label="Team Name" md-sort-by="teamName">{{ item.teamName }}</md-table-cell>
         <md-table-cell md-label="IPO Price" md-sort-by="ipoPrice">{{ item.ipoPrice | toCurrency }}</md-table-cell>
         <md-table-cell v-if="item.milestoneData && item.milestoneData.length > 0" md-label="Wins">{{ item.milestoneData[0].wins }}</md-table-cell>
-        <md-table-cell v-for="milestone in item.milestoneData" :key="milestone.id" :md-label="milestone.milestoneName + ' Dividend'">
-          <span v-if="milestone">{{ milestone.dividendPrice | toCurrency }}</span>
-          <span v-else>n/a</span>
+        <md-table-cell v-for="(milestone, index) in maxMilestoneData" :key="milestone.id" :md-label="milestone.milestoneName + ' Dividend'">
+          <span v-if="item.milestoneData[index]">{{ item.milestoneData[index].dividendPrice | toCurrency }}</span>
+          <span v-else>-</span>
         </md-table-cell>
-        <template v-if="item.milestoneData && item.milestoneData.length < maxLengthOfMilestoneData">
-          <md-table-cell v-for="index in maxLengthOfMilestoneData - item.milestoneData.length" :key="index"></md-table-cell>
-        </template>
         <md-table-cell md-label="Total Dividend">{{ getTotalDividendAmountForTeam(item) | toCurrency }}</md-table-cell>
       </md-table-row>
     </md-table>
@@ -103,7 +100,8 @@ export default {
       isPageReady: false,
       tournamentTeamData: [],
       maxLengthOfMilestoneData: 0,
-      showRawEntryStockData: false
+      showRawEntryStockData: false,
+      maxMilestoneData: []
     }
   },
   props: {
@@ -187,7 +185,11 @@ export default {
       const tournamentTeamData =[...this.tournamentTeamData];
       this.maxLengthOfMilestoneData = tournamentTeamData.reduce((result, teamData) => {
         const milestoneDataLength = teamData.milestoneData ? teamData.milestoneData.length: 0;
-        return Math.max(result, milestoneDataLength);
+        const max = Math.max(result, milestoneDataLength);
+        if(max === milestoneDataLength) {
+          this.maxMilestoneData = teamData.milestoneData;
+        }
+        return max;
       }, 0);
     },
     getTotalDividendAmountForTeam(tournamentTeam) {

@@ -83,7 +83,6 @@ export default {
     }
   },
   async created() {
-		console.log(this.buyStockData.tournamentTeamId)
     this.buyStockDataInput = {
 			teamName: this.buyStockData.teamName,
 			price: this.buyStockData.currentAskPrice,

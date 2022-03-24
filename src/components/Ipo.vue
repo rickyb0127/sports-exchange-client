@@ -19,12 +19,22 @@
       <md-table-row slot="md-table-row" slot-scope="{ item }">
         <md-table-cell md-label="Team" md-sort-by="teamName">{{ item.teamName }}</md-table-cell>
         <md-table-cell md-label="Price" md-sort-by="ipoPrice">{{ item.ipoPrice | toCurrency }}</md-table-cell>
+        <md-table-cell v-if="item.seed" md-label="Seed" md-sort-by="seed">{{ item.seed }}</md-table-cell>
+        <md-table-cell v-if="item.region" md-label="Region" md-sort-by="region">{{ item.region }}</md-table-cell>
         <md-table-cell md-label="Quantity">
           <input :ref="'quantityInput-' + item.id" @change="calculateTotal(item.id)" @keyup="calculateTotal(item.id)" :value="item.quantity" class="quantity-input" type="number" step="1" min="0" max="">
         </md-table-cell>
         <md-table-cell md-label="Total">{{ item.total | toCurrency }}</md-table-cell>
       </md-table-row>
     </md-table>
+    <div class="md-layout">
+      <div class="md-layout-item"></div>
+      <div class="md-layout-item"></div>
+      <div class="md-layout-item">
+        <md-button v-if="checkoutTotal > 0 && checkoutTotal <= ipoBudget - ipoCashSpent" class="md-raised md-primary" @click="placeOrderPressed()">Place Order</md-button>
+        <md-button v-else disabled>Place Order</md-button>
+      </div>
+    </div>
 
     <md-dialog :md-active.sync="showConfirmCheckoutModal" :md-fullscreen="false">
       <md-dialog-title>Confirm Checkout</md-dialog-title>  
@@ -69,7 +79,6 @@ export default {
       teamData: null,
       teamPurchaseInput: [],
       showConfirmCheckoutModal: false,
-      // currentBalance: 0,
       user: null,
       successMessage: null,
       serverError: null,
@@ -88,6 +97,9 @@ export default {
     },
     ipoCashSpent: {
       type: Number
+    },
+    successCb: {
+      type: Function
     }
   },
   watch: {
@@ -119,7 +131,10 @@ export default {
     },
   methods: {
     calculateTotal(id) {
-      const inputValue = this.$refs['quantityInput-' + id].value;
+      let inputValue = this.$refs['quantityInput-' + id].value;
+      if(inputValue && !isNaN(inputValue)) {
+        inputValue = parseInt(inputValue);
+      }
       const index = this.teamPurchaseInput.findIndex(team => team.id === id);
       this.teamPurchaseInput[index].quantity = inputValue;
       this.teamPurchaseInput[index].total = this.teamPurchaseInput[index].quantity * this.teamPurchaseInput[index].ipoPrice;
@@ -134,7 +149,8 @@ export default {
               teamId,
               teamName,
               seed,
-              ipoPrice
+              ipoPrice,
+              region
             }
           }
         `,
@@ -146,7 +162,7 @@ export default {
       this.teamData = response.data.tournamentTeams;
     },
     async fetchEntry() {
-      const response = await apolloClient.query({
+      await apolloClient.query({
         fetchPolicy: 'no-cache',
         query: gql`
           query Entry($id: ID!) {
@@ -161,10 +177,6 @@ export default {
           id: this.entryId
         }
       });
-
-      const entry = response.data.entry;
-      // change to update the prop cashSpent and send back to parent
-      // this.currentBalance = entry.ipoCashSpent;
     },
     async placeOrderPressed() {
       await this.fetchEntry();
@@ -209,14 +221,20 @@ export default {
         }
 
         this.showConfirmCheckoutModal = false;
-        this.successMessage = "Successfully made IPO purchase!";
-        this.$router.push({ 
-          name: "Portfolio",
-          params: {
-            entryId: this.entryId,
-            successMessage: this.successMessage
-          }
-        });
+
+        if(!this.successCb) {
+          this.successMessage = "Successfully made IPO purchase!";
+          this.$router.push({ 
+            name: "Portfolio",
+            params: {
+              entryId: this.entryId,
+              successMessage: this.successMessage
+            }
+          });
+        } else {
+          await this.successCb();
+        }
+        
       }
     },
     async init() {

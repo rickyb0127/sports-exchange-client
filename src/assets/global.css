@@ -125,3 +125,22 @@
 .spinner-primary.md-progress-spinner.md-theme-default .md-progress-spinner-circle {
   stroke: #474C45 !important;
 }
+
+.dividend-payouts-table.md-table table {
+  table-layout: fixed !important;
+}
+
+.dividend-payouts-table .md-table-head-container, .md-table-head-label {
+  white-space: unset;
+  height: auto;
+}
+
+@media screen and (max-width: 720px) {
+  .dividend-payouts-table.md-table table {
+    table-layout: auto !important;
+  }
+
+  .dividend-payouts-table .md-table-head-container, .md-table-head-label {
+    white-space: nowrap;
+  }
+}

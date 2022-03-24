@@ -11,10 +11,9 @@
 
       <md-card-content>
         <div v-if="activeTournaments && activeTournaments.length > 0">
-          <md-table v-model="activeTournaments" class="text-left">
+          <md-table v-model="activeTournaments" class="web-table text-left">
             <md-table-row slot="md-table-row" slot-scope="{ item }">
               <md-table-cell md-label="Tournament Name" md-sort-by="name">{{ item.leagueName }} - {{ item.name }}</md-table-cell>
-              <md-table-cell md-label="Created At" md-sort-by="createdAt">{{getReadableDate(item.createdAt)}}</md-table-cell>
               <md-table-cell v-if="!isAdmin" md-label="My Entries">
                 <div v-if="userHasTournamentEntries(item.id)">
                   <md-button class="md-raised md-secondary" @click="goToEntry(userHasTournamentEntries(item.id))">View Entry</md-button>
@@ -23,7 +22,35 @@
                   Not Entered
                 </div>
               </md-table-cell>
-              <md-table-cell md-label=""><md-button class="md-raised md-primary" @click="showJoinTournamentForm(item)">Create New Entry</md-button></md-table-cell>
+              <md-table-cell md-label="New Entry"><md-button class="md-raised md-primary" @click="showJoinTournamentForm(item)">Create New Entry</md-button></md-table-cell>
+              <md-table-cell md-label="Created At" md-sort-by="createdAt">{{getReadableDate(item.createdAt)}}</md-table-cell>
+            </md-table-row>
+          </md-table>
+          <md-table class="mobile-table">
+            <md-table-row v-for="tournament in activeTournaments" :key="tournament.id">
+              <md-table-cell>
+                <div class="mobile-row">
+                  <div class="mobile-header">Tournament Name</div>
+                  <div>{{tournament.name}}</div>
+                </div>
+
+                <div class="mobile-row" v-if="userHasTournamentEntries(tournament.id)">
+                  <div class="mobile-header">My Entries</div>
+                  <div v-if="userHasTournamentEntries(tournament.id)">
+                    <md-button class="md-raised md-secondary" @click="goToEntry(userHasTournamentEntries(tournament.id))">View Entry</md-button>
+                  </div>
+                </div>
+
+                <div class="mobile-row">
+                  <div class="mobile-header">New Entry</div>
+                  <div><md-button class="md-raised md-primary" @click="showJoinTournamentForm(tournament)">Create New Entry</md-button></div>
+                </div>
+
+                <div class="mobile-row">
+                  <div class="mobile-header">Created At</div>
+                  <div>{{getReadableDate(tournament.createdAt)}}</div>
+                </div>
+              </md-table-cell>
             </md-table-row>
           </md-table>
         </div>
@@ -212,4 +239,30 @@ export default {
 </script>
 
 <style scoped>
+.web-table {
+  display: block;
+}
+
+.mobile-table {
+  display: none;
+}
+
+.mobile-header {
+  font-weight: bold;
+}
+
+.mobile-row {
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+@media screen and (max-width: 720px) {
+  .web-table {
+    display: none;
+  }
+
+  .mobile-table {
+    display: block;
+  }
+}
 </style>

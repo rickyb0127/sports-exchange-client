@@ -1,6 +1,6 @@
 <template>
   <div v-if="isPageReady">
-    <!-- <div @click="importNfl()">import nfl</div> -->
+    <!-- <div @click="importNewLeague()">import league</div> -->
     <!-- <leagues v-if="selectedView === 'main'" :is-admin="true" :selected-view.sync="selectedView" :league-id.sync="leagueId"></leagues>
     <league v-if="selectedView === 'league'" :is-admin="true" :selected-view.sync="selectedView" :league-id.sync="leagueId" :tournament-id.sync="tournamentId"></league>
     <tournament v-if="selectedView === 'tournament'" :is-admin="true" :selected-view.sync="selectedView" :league-id.sync="leagueId" :tournament-id.sync="tournamentId"></tournament> -->
@@ -41,8 +41,9 @@
         </md-card>
       </div>
     </div>
-    <tournament v-if="selectedView === 'tournamentDetail'" :selected-view.sync="selectedView" :league-id.sync="selectedLeagueId" :tournament-id.sync="selectedTournamentId"></tournament>
-    
+    <tournament v-if="selectedView === 'tournamentDetail'" :selected-view.sync="selectedView" :selected-entry.sync="selectedEntry" :league-id.sync="selectedLeagueId" :tournament-id.sync="selectedTournamentId"></tournament>
+    <edit-entry-data v-if="selectedView === 'editEntry'" :selected-view.sync="selectedView" :selected-entry="selectedEntry" :league-id.sync="selectedLeagueId" :tournament-id.sync="selectedTournamentId"></edit-entry-data>
+
     <md-dialog :md-active.sync="showCreateNewTournamentModal">
       <md-dialog-title class="text-center">Create Tournament</md-dialog-title>
       <md-dialog-content>
@@ -53,16 +54,14 @@
 </template>
 
 <script>
-/* eslint-disable */
 import { apolloClient } from "../main";
 import gql from 'graphql-tag';
-import Leagues from './Leagues.vue';
-import League from './League.vue';
 import Tournament from './Tournament.vue';
 import TournamentForm from './TournamentForm.vue';
+import EditEntryData from './EditEntryData.vue';
 
 export default {
-  components: { Leagues, League, Tournament, TournamentForm },
+  components: { Tournament, TournamentForm, EditEntryData },
   name: "Admin",
   data() {
     return {
@@ -73,7 +72,8 @@ export default {
       selectedLeagueId: null,
       selectedTournamentId: null,
       showCreateNewTournamentModal: false,
-      successMessage: null
+      successMessage: null,
+      selectedEntry: null
       // leagueId: null,
       // tournamentId: null
     }
@@ -84,7 +84,7 @@ export default {
     }
   },
   methods: {
-    async importNfl() {
+    async importNewLeague() {
       await apolloClient.mutate({
         fetchPolicy: 'no-cache',
         mutation: gql`
@@ -96,7 +96,7 @@ export default {
           }
         `,
         variables: {
-          leagueName: "nfl"
+          leagueName: "ncaa-mens-basketball-march-madness-2022"
         }
       });
     },
@@ -113,7 +113,8 @@ export default {
                 secondaryMarketBudget,
                 milestones {
                   name
-                }
+                },
+                regions
               },
               tournaments {
                 id,
@@ -138,6 +139,7 @@ export default {
     },
     formatDate(timestamp) {
       const date = new Date(timestamp).toLocaleString('en-US', {
+        timeZone: 'America/New_York',
         weekday: 'short', // long, short, narrow
         day: 'numeric', // numeric, 2-digit
         year: 'numeric', // numeric, 2-digit

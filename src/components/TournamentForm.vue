@@ -48,8 +48,13 @@
                 <md-table-cell md-label="Price" md-sort-by="price">
                   <span>$</span><input :ref="'priceInput-' + item.id" @change="updateInput(item.id)" class="price-input" type="number" step="1" min="0" max="" :value="item.price">
                 </md-table-cell>
-                <md-table-cell md-label="Seed" md-sort-by="seed">
+                <md-table-cell v-if="selectedLeague.defaultSettings.useSeed" md-label="Seed" md-sort-by="seed">
                   <input :ref="'seedInput-' + item.id" @change="updateInput(item.id)" class="seed-input" type="number" step="1" min="1" max="" :value="item.seed">
+                </md-table-cell>
+                <md-table-cell v-if="selectedLeague.defaultSettings.regions && selectedLeague.defaultSettings.regions.length" md-label="Region">
+                  <select :ref="'regionInput-' + item.id" @change="updateInput(item.id)">
+                    <option v-for="region in selectedLeague.defaultSettings.regions" :key="region" :value="region">{{region}}</option>
+                  </select>
                 </md-table-cell>
               </md-table-row>
             </md-table>
@@ -121,6 +126,11 @@ export default {
             name: milestone.name
           }
         });
+        if(val.defaultSettings.regions && val.defaultSettings.regions.length) {
+          for(let team of this.tournamentInputTeams) {
+            team.region = val.defaultSettings.regions[0];
+          }
+        }
       } else {
         this.tournamentInputIpoBudget = null;
         this.tournamentInputSecondaryMarketBudget = null;
@@ -178,6 +188,7 @@ export default {
           price: parseFloat(team.price),
           teamId: team.id,
           seed: parseFloat(team.seed),
+          region: team.region,
           tournamentId: tournamentId
         };
         try {
@@ -236,9 +247,11 @@ export default {
     updateInput(id) {
       const priceInputValue = this.$refs['priceInput-' + id].value;
       const seedInputValue = this.$refs['seedInput-' + id].value;
+      const regionInputValue = this.$refs['regionInput-' + id].value;
       const index = this.tournamentInputTeams.findIndex(team => team.id === id);
       this.tournamentInputTeams[index].price = priceInputValue;
       this.tournamentInputTeams[index].seed = seedInputValue;
+      this.tournamentInputTeams[index].region = regionInputValue;
     }
   },
   async created() {

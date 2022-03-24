@@ -51,6 +51,9 @@
               <md-table-cell md-label="Owner(s)">{{entryOwners[item.id].fullname}}</md-table-cell>
               <md-table-cell md-label="Email(s)">{{entryOwners[item.id].email}}</md-table-cell>
               <md-table-cell md-label="Profit/Loss">{{(dividendTotals[index] - (item.ipoCashSpent + item.secondaryMarketCashSpent)) | toCurrency}}</md-table-cell>
+              <md-table-cell md-label="Edit Entry Data">
+                <span @click="currentSelectedView = 'editEntry', currentSelectedEntry = item"><md-icon class="fas fa-edit link"></md-icon></span>
+              </md-table-cell>
             </md-table-row>
           </md-table>
         </div>
@@ -110,7 +113,6 @@
 </template>
 
 <script>
-/* eslint-disable */
 import { apolloClient } from "../main";
 import gql from 'graphql-tag';
 import TournamentTeamForm from './TournamentTeamForm.vue';
@@ -131,7 +133,8 @@ export default {
       successMessage: null,
       userTournamentEntry: null,
       attrs: {
-        currentSelectedView: this.selectedView
+        currentSelectedView: this.selectedView,
+        currentSelectedEntry: this.selectedEntry
       },
       entryOwners: {},
       selectedMilestone: null,
@@ -156,6 +159,15 @@ export default {
         this.attrs.currentSelectedView = value;
         this.$emit(`update:selected-view`, value);
       }
+    },
+    currentSelectedEntry: {
+      get() {
+        return this.attrs.currentSelectedEntry;
+      },
+      set(value) {
+        this.attrs.currentSelectedEntry = value;
+        this.$emit(`update:selected-entry`, value);
+      }
     }
   },
   props: {
@@ -167,11 +179,13 @@ export default {
     },
     selectedView: {
       type: String
+    },
+    selectedEntry: {
+      type: Object
     }
   },
   methods: {
     async initializeShowMasterSheet() {
-      console.log("transactions: " + JSON.stringify(this.transactions))
       const tournamentTeamData = await this.fetchAllTournamentTeamData();
       let stocks = [...this.entryStocks];
       stocks = stocks.map((stock) => {
@@ -204,7 +218,7 @@ export default {
         }
       });
 
-      this.masterSheetTransactionData = this.entries.map((entry, index) => {
+      this.masterSheetTransactionData = this.entries.map((entry) => {
         const entryTransactions = this.transactions.filter(transaction => transaction.entry.id === entry.id);
         return {
           ...entry,
@@ -285,7 +299,6 @@ export default {
 
       this.isTournamentActiveInput = response.data.toggleIsTournamentActive.isActive;
       this.successMessage = `Successfully changed tournament active to ${this.isTournamentActiveInput}`;
-      console.log(this.successMessage)
     },
     async getStocks() {
       let result = [];
@@ -338,7 +351,8 @@ export default {
                       wins,
                       losses,
                       ties
-                    }
+                    },
+                    numStocksInCirculation
                   }
                 }
               `,
@@ -371,11 +385,12 @@ export default {
         } else {
           const milestoneList = milestoneTeamData.map((team) => {
             const dataList = team.milestoneData.reduce((_result, _data) => {
+              const dividendPrice = this.truncateDecimals(_data.dividendPrice / team.numStocksInCirculation, 2);
               const tournamentTeamId = team.id;
               if(!_result[tournamentTeamId]) {
-                _result[tournamentTeamId] = _data.dividendPrice;
+                _result[tournamentTeamId] = dividendPrice;
               } else {
-                _result[tournamentTeamId] += _data.dividendPrice;
+                _result[tournamentTeamId] += dividendPrice;
               }
               return _result;
             }, {});
@@ -396,6 +411,13 @@ export default {
         }
       }
     },
+    truncateDecimals(number, digits) {
+      const multiplier = Math.pow(10, digits);
+      const adjustedNum = number * multiplier;
+      const truncatedNum = Math[adjustedNum < 0 ? 'ceil' : 'floor'](adjustedNum);
+
+      return truncatedNum / multiplier;
+    },
     async fetchAllTournamentTeamData() {
       const response = await apolloClient.query({
       fetchPolicy: 'no-cache',
@@ -406,7 +428,8 @@ export default {
               teamId,
               teamName,
               seed,
-              ipoPrice
+              ipoPrice,
+              numStocksInCirculation
             }
           }
         `,
@@ -492,7 +515,7 @@ export default {
       await this.fetchEntryUsers();
       await this.getDividendTotals();
       this.successMessage = "Successfully elimiated teams for tournament!";
-    },
+    }
   },
   async created() {
     const response = await apolloClient.query({

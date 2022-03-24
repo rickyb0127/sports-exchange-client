@@ -28,24 +28,25 @@
       <div class="md-layout">
         <div>
           <h3 class="label">Expires Date</h3>
-          <div>* the time that the offer expires will be the end of the day chosen</div>
         </div>
-        <md-datepicker v-model="expiresDateInput" :md-disabled-dates="disabledDates" md-immediately/>
+        <md-datepicker v-model="datePickerInput" :md-disabled-dates="disabledDates" md-immediately/>
+        <time-picker class="timepicker-container" :selected-hour.sync="expiresHoursMinutes.hour" :selected-minute.sync="expiresHoursMinutes.minute"></time-picker>
       </div>
     </div>
     <div v-if="errorMessage" class="error text-center">
       {{errorMessage}}
     </div>
     <md-card-actions>
+      <span class="submit-confirmation" v-if="selectedBidInput && selectedBidInput.quantity && selectedBidInput.quantity > 0 && selectedBidInput.maxBuyPrice">
+        Are you sure you want to submit this bid?
+      </span>
       <md-button :disabled="httpWait" v-if="selectedBidInput && selectedBidInput.quantity && selectedBidInput.quantity > 0 && selectedBidInput.maxBuyPrice" class="md-primary" :class="{ 'btn-disabled' : httpWait }" @click="submit">
         Submit
         <md-progress-spinner v-if="httpWait" class="btn-spin" :md-diameter="20" :md-stroke="3" md-mode="indeterminate"></md-progress-spinner>
       </md-button>
       <md-button v-else disabled>Submit</md-button>
+      <md-button class="md-accent" @click="closeCb">Cancel</md-button>
     </md-card-actions>
-    <div v-if="errorMessage" class="error text-center">
-      {{errorMessage}}
-    </div>
   </div>
 </template>
 
@@ -54,13 +55,14 @@ import { apolloClient } from "../main";
 import gql from 'graphql-tag';
 import CurrencyInput from './CurrencyInput.vue';
 import { DateTime } from "luxon";
+import TimePicker from './TimePicker.vue';
 
 export default {
-  components: { CurrencyInput },
+  components: { CurrencyInput, TimePicker },
   name: "BidForm",
   data() {
-    let expiresDate = DateTime.local().endOf('day');
-    const now = DateTime.local();
+    let expiresDate = DateTime.fromObject({ zone: "America/New_York" }).endOf('day');
+    const now = DateTime.fromObject({ zone: "America/New_York" });
     return {
       disabledDates: date => {
         const beginningOfDay = now.startOf('day');
@@ -71,8 +73,11 @@ export default {
       bidInput: [],
       errorMessage: null,
       selectedBidInput: null,
-      expiresDateInput: expiresDate.toJSDate(),
-      httpWait: false
+      datePickerInput: expiresDate.toJSDate(),
+      httpWait: false,
+      expiresHoursMinutes: {},
+      startOfDayMillis: null,
+      expiresDateInput: null
     }
   },
   props: {
@@ -93,9 +98,31 @@ export default {
     },
     selectedBid: {
       type: Object
+    },
+    closeCb: {
+      type: Function
+    }
+  },
+  watch: {
+    expiresHoursMinutes: {
+      handler(val) {
+        if(val) {
+          this.checkIfValueChanged();
+        }
+      },
+      deep: true
+    },
+    datePickerInput(val) {
+      if(val) {
+        this.checkIfValueChanged();
+      }
     }
   },
   methods: {
+    checkIfValueChanged() {
+      this.startOfDayMillis = DateTime.fromJSDate(this.datePickerInput, { zone: "America/New_York" }).startOf('day').toMillis();
+      this.expiresDateInput = DateTime.fromMillis(this.startOfDayMillis).plus({ hours: this.expiresHoursMinutes.hour, minutes: this.expiresHoursMinutes.minute }).toMillis();
+    },
     async fetchTournamentTeams() {
       const response = await apolloClient.query({
       fetchPolicy: 'no-cache',
@@ -116,9 +143,15 @@ export default {
       this.tournamentTeamData = response.data.tournamentTeams;
     },
     async submit() {
+      const nowMilliseconds = DateTime.fromObject({ zone: "America/New_York" }).toMillis();
+      if(this.expiresDateInput < nowMilliseconds) {
+        this.errorMessage = "Expires date must be in the future";
+        return;
+      }
+
       if(this.validateBidInput()) {
         this.httpWait = true;
-        const expiresAt = DateTime.fromJSDate(this.expiresDateInput).endOf('day').toJSDate().getTime();
+        const expiresAt = DateTime.fromMillis(this.expiresDateInput).toJSDate().getTime();
         const input = {
           entryId: this.entryId,
           tournamentTeamId: this.selectedBidInput.id,
@@ -180,6 +213,9 @@ export default {
   },
   async created() {
     await this.fetchTournamentTeams();
+    this.startOfDayMillis = DateTime.fromJSDate(this.datePickerInput, { zone: "America/New_York" }).startOf('day').toMillis();
+    this.$set(this.expiresHoursMinutes, 'hour', DateTime.fromMillis(this.startOfDayMillis).hour);
+    this.$set(this.expiresHoursMinutes, 'minute', DateTime.fromMillis(this.startOfDayMillis).minute);
     this.bidInput = this.tournamentTeamData.map((teamData) => {
       return {
         ...teamData,
@@ -199,4 +235,7 @@ export default {
 </script>
 
 <style scoped>
+.submit-confirmation {
+  padding-right: 20px;
+}
 </style>

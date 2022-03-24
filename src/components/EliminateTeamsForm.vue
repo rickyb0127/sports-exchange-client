@@ -23,7 +23,6 @@
 </template>
 
 <script>
-/* eslint-disable */
 import { apolloClient } from "../main";
 import gql from 'graphql-tag';
 

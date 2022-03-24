@@ -17,9 +17,11 @@
         </div>
       </div>
     </div>
-    <md-table md-sort="teamName" md-sort-order="asc" v-model="tournamentTeamStocks">
+    <md-table v-if="tournamentTeamStocks && tournamentTeamStocks.length" md-sort="teamName" md-sort-order="asc" v-model="tournamentTeamStocks">
       <md-table-row class="text-left" slot="md-table-row" slot-scope="{ item }">
         <md-table-cell md-label="Team" md-sort-by="teamName">{{ item.teamName }}</md-table-cell>
+        <md-table-cell v-if="item.seed" md-label="Seed" md-sort-by="seed">{{ item.seed }}</md-table-cell>
+        <md-table-cell v-if="item.region" md-label="Region" md-sort-by="region">{{ item.region }}</md-table-cell>
         <md-table-cell md-label="Shares Owned" md-sort-by="quantity">{{ item.quantity }}</md-table-cell>
         <md-table-cell md-label="IPO Cost/Share" md-sort-by="ipoPrice">{{ item.ipoPrice | toCurrency }}</md-table-cell>
         <md-table-cell md-label="Total Cost" md-sort-by="total">{{ (item.total)| toCurrency }}</md-table-cell>
@@ -96,7 +98,9 @@ export default {
             stocksByEntryId(entryId: $entryId) {
               teamName,
               ipoPrice,
-              quantity
+              quantity,
+              seed,
+              region
             }
           }
         `,

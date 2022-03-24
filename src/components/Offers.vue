@@ -1,6 +1,7 @@
 <template>
   <div v-if="isPageReady">
     <h2>Offers</h2>
+    *All times are shown in Eastern Time
     <div v-if="successMessage" class="alert-success">
       {{successMessage}}
       <span @click="successMessage = null"><md-icon class="fa fa-times-circle light link"></md-icon></span>
@@ -19,13 +20,16 @@
         <md-table-row slot="md-table-row" slot-scope="{ item }">
           <md-table-cell md-label="Team Name" md-sort-by="teamName">{{ item.teamName }}</md-table-cell>
           <md-table-cell md-label="Quantity" md-sort-by="numStocksForSale">{{ item.numStocksForSale }}</md-table-cell>
-          <md-table-cell md-label="Current Ask Price" md-sort-by="currentAskPrice">{{ item.currentAskPrice | toCurrency}}</md-table-cell>
-          <md-table-cell md-label="Expires At" md-sort-by="offerExpiresAt">{{ formatDate(parseInt(item.offerExpiresAt)) }}</md-table-cell>
-          <md-table-cell md-label="Edit">
-            <span @click="initializeShowOfferForm('edit', item)"><md-icon class="fas fa-edit link"></md-icon></span>
+          <md-table-cell md-label="Current Ask Price">
+            <span v-if="item.currentAskPrice">{{ item.currentAskPrice | toCurrency}}</span>
+            <span v-else>{{getStockForStockOfferString(item)}}</span>
           </md-table-cell>
+          <md-table-cell md-label="Expires At" md-sort-by="offerExpiresAt">{{ formatDate(parseInt(item.offerExpiresAt)) }}</md-table-cell>
+          <!-- <md-table-cell md-label="Edit">
+            <span @click="initializeShowOfferForm('edit', item)"><md-icon class="fas fa-edit link"></md-icon></span>
+          </md-table-cell> -->
           <md-table-cell md-label="Delete">
-            <span @click="deleteOffer(item.tournamentTeamId)"><md-icon class="fas fa-trash link"></md-icon></span>
+            <span @click="showDeleteOfferModal = true, tournamentTeamIdToDelete=item.tournamentTeamId, selectedTeamNameToDelete = item.teamName"><md-icon class="fas fa-trash link"></md-icon></span>
           </md-table-cell>
         </md-table-row>
       </md-table>
@@ -38,10 +42,14 @@
         <md-table-row slot="md-table-row" slot-scope="{ item }">
           <md-table-cell md-label="Team Name" md-sort-by="teamName">{{ item.teamName }}</md-table-cell>
           <md-table-cell md-label="Quantity" md-sort-by="numStocksForSale">{{ item.numStocksForSale }}</md-table-cell>
-          <md-table-cell md-label="Current Ask Price" md-sort-by="currentAskPrice">{{ item.currentAskPrice | toCurrency}}</md-table-cell>
+          <md-table-cell md-label="Current Ask Price">
+            <span v-if="item.currentAskPrice">{{ item.currentAskPrice | toCurrency}}</span>
+            <span v-else>{{getStockForStockOfferString(item)}}</span>
+          </md-table-cell>
           <md-table-cell md-label="Expires At" md-sort-by="offerExpiresAt">{{ formatDate(parseInt(item.offerExpiresAt)) }}</md-table-cell>
-          <md-table-cell md-label="Buy">
-            <span @click="initializeBuyForm(item)"><md-icon class="fas fa-shopping-cart link"></md-icon></span>
+          <md-table-cell md-label="Buy/Trade">
+            <span v-if="item.currentAskPrice" @click="initializeBuyForm(item)"><md-icon class="fas fa-shopping-cart link"></md-icon></span>
+            <span v-if="!item.currentAskPrice && item.tradableTeams && hasStocksForTrade(item.tradableTeams)" @click="initializeTradeForm(item)"><md-icon class="fas fa-exchange-alt link"></md-icon></span>
           </md-table-cell>
         </md-table-row>
       </md-table>
@@ -59,11 +67,11 @@
           <md-table-cell md-label="Quantity" md-sort-by="quantity">{{ item.quantity }}</md-table-cell>
           <md-table-cell md-label="Max Bid Price" md-sort-by="price">{{ item.price | toCurrency }}</md-table-cell>
           <md-table-cell md-label="Expires At" md-sort-by="expiresAt">{{ formatDate(parseInt(item.expiresAt)) }}</md-table-cell>
-          <md-table-cell md-label="Edit">
+          <!-- <md-table-cell md-label="Edit">
             <span @click="initializeShowBidForm('edit', item)"><md-icon class="fas fa-edit link"></md-icon></span>
-          </md-table-cell>
+          </md-table-cell> -->
           <md-table-cell md-label="Delete">
-            <span @click="deleteBid(item.id)"><md-icon class="fas fa-trash link"></md-icon></span>
+            <span @click="showDeleteBidModal = true, bidTeamIdToDelete=item.id, selectedTeamNameToDelete = item.teamName"><md-icon class="fas fa-trash link"></md-icon></span>
           </md-table-cell>
         </md-table-row>
       </md-table>
@@ -102,21 +110,64 @@
     <md-dialog v-if="showOfferForm" :md-active.sync="showOfferForm" :md-fullscreen="false">
       <md-dialog-title>Create Offer</md-dialog-title>
       <md-dialog-content>
-        <offer-form :form-type="offerFormOptions.type" :selected-offer="offerFormOptions.selectedOffer" :create-offer-success-cb="createOfferSuccessCb" :trade-accepted-cb="tradeAcceptedCb" :entry-id="entryId"></offer-form>
+        <offer-form :form-type="offerFormOptions.type" :selected-offer="offerFormOptions.selectedOffer" :create-offer-success-cb="createOfferSuccessCb" :trade-accepted-cb="tradeAcceptedCb" :entry-id="entryId" :tournament-id="tournamentId" :close-cb="closeCb"></offer-form>
       </md-dialog-content>
     </md-dialog>
 
     <md-dialog v-if="showBidForm" :md-active.sync="showBidForm" :md-fullscreen="false">
       <md-dialog-title>Create New Bid</md-dialog-title>
       <md-dialog-content>
-        <bid-form :form-type="bidFormOptions.type" :selected-bid="bidFormOptions.selectedBid" :create-new-bid-success-cb="createNewBidSuccessCb" :trade-accepted-cb="tradeAcceptedCb" :entry-id="entryId" :tournament-id="tournamentId"></bid-form>
+        <bid-form :form-type="bidFormOptions.type" :selected-bid="bidFormOptions.selectedBid" :create-new-bid-success-cb="createNewBidSuccessCb" :trade-accepted-cb="tradeAcceptedCb" :entry-id="entryId" :tournament-id="tournamentId" :close-cb="closeCb"></bid-form>
       </md-dialog-content>
+    </md-dialog>
+
+    <md-dialog v-if="showDeleteOfferModal && tournamentTeamIdToDelete !== null && selectedTeamNameToDelete !== null" :md-active.sync="showDeleteOfferModal" :md-fullscreen="false">
+      <md-dialog-title>Delete Offer</md-dialog-title>
+      <md-dialog-content>
+        <div class="text-center">
+          Are you sure you want to delete your offer for {{selectedTeamNameToDelete}}?
+        </div>
+      </md-dialog-content>
+
+      <md-card-actions>
+        <md-button @click="deleteOffer(tournamentTeamIdToDelete)" class="md-accent md-raised">
+          Confirm Delete
+        </md-button>
+        <md-button @click="showDeleteOfferModal = false, tournamentTeamIdToDelete = null, selectedTeamNameToDelete = null" class="md-primary md-raised">
+          Cancel
+        </md-button>
+      </md-card-actions>
+    </md-dialog>
+
+    <md-dialog v-if="showDeleteBidModal && bidTeamIdToDelete !== null && selectedTeamNameToDelete !== null" :md-active.sync="showDeleteBidModal" :md-fullscreen="false">
+      <md-dialog-title>Delete Offer</md-dialog-title>
+      <md-dialog-content>
+        <div class="text-center">
+          Are you sure you want to delete your bid for {{selectedTeamNameToDelete}}?
+        </div>
+      </md-dialog-content>
+
+      <md-card-actions>
+        <md-button @click="deleteBid(bidTeamIdToDelete)" class="md-accent md-raised">
+          Confirm Delete
+        </md-button>
+        <md-button @click="showDeleteBidModal = false, bidTeamIdToDelete = null, selectedTeamNameToDelete = null" class="md-primary md-raised">
+          Cancel
+        </md-button>
+      </md-card-actions>
     </md-dialog>
 
     <md-dialog v-if="showBuyForm" :md-active.sync="showBuyForm" :md-fullscreen="false">
       <md-dialog-title>Buy Stock</md-dialog-title>
       <md-dialog-content>
         <buy-form :buy-stock-data="buyStockData" :buy-stock-success-cb="buyStockSuccessCb" :entry-id="entryId"></buy-form>
+      </md-dialog-content>
+    </md-dialog>
+
+    <md-dialog v-if="showTradeForm" :md-active.sync="showTradeForm" :md-fullscreen="false">
+      <md-dialog-title>Trade Stock</md-dialog-title>
+      <md-dialog-content>
+        <trade-form :trade-stock-data="tradeStockData" :trade-stock-success-cb="tradeStockSuccessCb" :entry-id="entryId"></trade-form>
       </md-dialog-content>
     </md-dialog>
 
@@ -149,10 +200,11 @@ import OfferForm from './OfferForm.vue';
 import BidForm from './BidForm.vue';
 import BuyForm from './BuyForm.vue';
 import SellForm from './SellForm.vue';
+import TradeForm from './TradeForm.vue';
 import { DateTime } from "luxon";
 
 export default {
-  components: { OfferForm, BidForm, BuyForm, SellForm },
+  components: { OfferForm, BidForm, BuyForm, SellForm, TradeForm },
   name: "Offers",
   data() {
     return {
@@ -173,7 +225,15 @@ export default {
       availableStocks: null,
       showMoreTransactionsModal: false,
       rawTransactionData: [],
-      errorMessage: null
+      errorMessage: null,
+      maxMilestoneData: [],
+      showDeleteOfferModal: false,
+      tournamentTeamIdToDelete: null,
+      selectedTeamNameToDelete: null,
+      showDeleteBidModal: false,
+      bidTeamIdToDelete: null,
+      showTradeForm: false,
+      tradeStockData: null
     }
   },
   props: {
@@ -185,6 +245,20 @@ export default {
     }
   },
   methods: {
+    hasStocksForTrade(tradableTeams) {
+      let result = false;
+      for(const tradableTeam of tradableTeams) {
+        const availableStock = this.availableStocks.find(stock => stock.tournamentTeamId === tradableTeam.tournamentTeamId);
+        if(availableStock) {
+          result = availableStock.quantity >= tradableTeam.quantity;
+        }
+        if(result === false) {
+          break;
+        }
+      }
+
+      return result;
+    },
     async createNewBidSuccessCb() {
       this.showBidForm = false;
       await this.initBidsAndAsks();
@@ -200,10 +274,23 @@ export default {
       await this.initBidsAndAsks();
       this.successMessage = "Successfully bought stock!";
     },
+    async tradeStockSuccessCb() {
+      this.showTradeForm = false;
+      await this.initBidsAndAsks();
+      this.successMessage = "Successfully traded stock!";
+    },
     async sellStockSuccessCb() {
       this.showSellForm = false;
       await this.initBidsAndAsks();
       this.successMessage = "Successfully sold stock!";
+    },
+    async closeCb() {
+      this.showBidForm = false;
+      this.showOfferForm = false;
+      this.showBuyForm = false;
+      this.showTradeForm = false;
+      this.showSellForm = false;
+      await this.initBidsAndAsks();
     },
     async deleteOffer(tournamentTeamId) {
       await apolloClient.mutate({
@@ -222,6 +309,9 @@ export default {
       });
 
       await this.initBidsAndAsks();
+      this.showDeleteOfferModal = false;
+      this.tournamentTeamIdToDelete = null;
+      this.selectedTeamNameToDelete = null;
       this.successMessage = "Successfully deleted offer!";
     },
     async deleteBid(entryBidId) {
@@ -240,6 +330,9 @@ export default {
       });
 
       await this.initBidsAndAsks();
+      this.showDeleteBidModal = false;
+      this.bidTeamIdToDelete = null;
+      this.selectedTeamNameToDelete = null;
       this.successMessage = "Successfully deleted bid!";
     },
     hasStockToSell(stockData) {
@@ -258,6 +351,7 @@ export default {
     },
     formatDate(timestamp) {
       const date = new Date(timestamp).toLocaleString('en-US', {
+        timeZone: 'America/New_York',
         weekday: 'short', // long, short, narrow
         day: 'numeric', // numeric, 2-digit
         year: 'numeric', // numeric, 2-digit
@@ -307,18 +401,32 @@ export default {
           query GetOfferedStocksForTournament($tournamentId: ID!, $entryId: ID!) {
             getOfferedStocksForTournament(tournamentId: $tournamentId, entryId: $entryId) {
               myStockOffers {
+                stockId,
                 teamName,
                 numStocksForSale,
                 currentAskPrice,
                 tournamentTeamId,
-                offerExpiresAt
+                offerExpiresAt,
+                tradableTeams {
+                  tournamentTeamId,
+                  teamName,
+                  quantity,
+                  price
+                }
               },
               leagueStockOffers {
+                stockId,
                 teamName,
                 numStocksForSale,
                 currentAskPrice,
                 tournamentTeamId,
-                offerExpiresAt
+                offerExpiresAt,
+                tradableTeams {
+                  tournamentTeamId,
+                  teamName,
+                  quantity,
+                  price
+                }
               }
             }
           }
@@ -361,17 +469,31 @@ export default {
       }
 
       this.transactionData = this.transactionData.map((data) => {
-        const verb = data.cost > 0 ? 'bought' : 'sold';
+        const plural = data.quantity > 1 ? 's' : '';
+        let verb = data.cost > 0 ? 'bought' : 'sold';
+        let text = `${data.entry.name} ${verb} ${data.quantity} share${plural} of ${data.teamName} for ${this.$options.filters.toCurrency(Math.abs(data.cost))}`;
+        if(data.cost === 0) {
+          verb = 'traded';
+          text = `${data.entry.name} ${verb} for ${data.quantity} share${plural} of ${data.teamName}`;
+        }
+
         return {
-          text: `${data.entry.name} ${verb} ${data.quantity} share of ${data.teamName} for ${this.$options.filters.toCurrency(Math.abs(data.cost))}`,
+          text,
           createdAt: this.formatDate(parseInt(data.createdAt))
         }
       });
 
       this.rawTransactionData = this.rawTransactionData.map((data) => {
-        const verb = data.cost > 0 ? 'bought' : 'sold';
+        const plural = data.quantity > 1 ? 's' : '';
+        let verb = data.cost > 0 ? 'bought' : 'sold';
+        let text = `${data.entry.name} ${verb} ${data.quantity} share${plural} of ${data.teamName} for ${this.$options.filters.toCurrency(Math.abs(data.cost))}`;
+        if(data.cost === 0) {
+          verb = 'traded';
+          text = `${data.entry.name} ${verb} for ${data.quantity} share${plural} of ${data.teamName}`;
+        }
+
         return {
-          text: `${data.entry.name} ${verb} ${data.quantity} share of ${data.teamName} for ${this.$options.filters.toCurrency(Math.abs(data.cost))}`,
+          text,
           createdAt: this.formatDate(parseInt(data.createdAt))
         }
       });
@@ -412,16 +534,16 @@ export default {
         }
       });
     },
-    formatDate(timestamp) {
-      const date = new Date(timestamp).toLocaleString('en-US', {
-        weekday: 'short', // long, short, narrow
-        day: 'numeric', // numeric, 2-digit
-        year: 'numeric', // numeric, 2-digit
-        month: 'long', // numeric, 2-digit, long, short, narrow
-        hour: 'numeric', // numeric, 2-digit
-        minute: 'numeric' // numeric, 2-digit
-      })
-      return date;
+    getStockForStockOfferString(offer) {
+      const offerString = offer.tradableTeams.reduce((result, team, index) => {
+        result += `${team.quantity} ${team.teamName}`;
+        if(offer.tradableTeams.length > 1 && index !== offer.tradableTeams.length -1) {
+          result += ", ";
+        }
+        return result;
+      }, "")
+
+      return offerString;
     },
     initializeShowOfferForm(type, selectedOffer) {
       this.showOfferForm = true;
@@ -442,7 +564,7 @@ export default {
       }
     },
     async initializeBuyForm(buyStockData) {
-      const now = DateTime.local();
+      const now = DateTime.local({ zone: "America/New_York" });
       if(now > buyStockData.offerExpiresAt) {
         this.errorMessage = "Offer has expired";
         await this.initBidsAndAsks();
@@ -451,8 +573,18 @@ export default {
       this.showBuyForm = true;
       this.buyStockData = buyStockData;
     },
+    async initializeTradeForm(stockData) {
+      const now = DateTime.local({ zone: "America/New_York" });
+      if(now > stockData.offerExpiresAt) {
+        this.errorMessage = "Offer has expired";
+        await this.initBidsAndAsks();
+        return;
+      }
+      this.showTradeForm = true;
+      this.tradeStockData = stockData;
+    },
     async initializeSellForm(sellStockData) {
-      const now = DateTime.local();
+      const now = DateTime.local({ zone: "America/New_York" });
       if(now > sellStockData.expiresAt) {
         this.errorMessage = "Offer has expired";
         await this.initBidsAndAsks();

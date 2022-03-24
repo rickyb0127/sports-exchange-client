@@ -43,6 +43,7 @@ import PortfolioDetail from './components/PortfolioDetail';
 import Tournament from './components/Tournament';
 import Entry from './components/Entry';
 import Exchanges from './components/Exchanges';
+import EditEntryData from './components/EditEntryData';
 
 const router = new Router({
   mode: 'history',
@@ -130,12 +131,20 @@ const router = new Router({
       component: PortfolioDetail,
       props: true,
       beforeEnter: authGuard
+    },
+    {
+      path: '/edit-entry-data',
+      name: 'EditEntryData',
+      component: EditEntryData,
+      props: true,
+      beforeEnter: authGuard
     }
   ]
 });
 
-// const httpLink = createHttpLink({ uri: "https://guyaafzm5l.execute-api.us-west-2.amazonaws.com/dev/graphql" });
-const httpLink = createHttpLink({ uri: "http://localhost:4000/graphql" });
+// This is important to make sure localhost is selected during development to ensure we arent using the production environment
+const httpLink = createHttpLink({ uri: "https://guyaafzm5l.execute-api.us-west-2.amazonaws.com/dev/graphql" });
+// const httpLink = createHttpLink({ uri: "http://localhost:4000/graphql" });
 const middlewareLink = setContext(async () => {
   const token = sessionStorage.getItem('sports-exchange.token')
   return {

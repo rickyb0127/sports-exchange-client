@@ -29,7 +29,7 @@
       <md-table-row>
         <md-table-cell class="text-left">% Remaining</md-table-cell>
         <!-- is this percent of teams remaining or stocks? -->
-        <md-table-cell>{{((remainingTeams.length/tournamentTeamStocks.length) * 100).toFixed(2)}}%</md-table-cell>
+        <md-table-cell>{{((getNumSharesRemaining()/getTotalNumStocks(tournamentTeamStocks)) * 100).toFixed(2)}}%</md-table-cell>
       </md-table-row>
 
       <md-table-row>
@@ -73,14 +73,14 @@
       </md-table-row>
 
       <md-table-row>
-        <md-table-cell class="text-left">Profit/Loss</md-table-cell>
-        <md-table-cell>{{(getDividendTotal() - (entry.ipoCashSpent + entry.secondaryMarketCashSpent)) | toCurrency}}</md-table-cell>
-      </md-table-row>
-
-      <md-table-row>
         <!-- num of shares of remaining teams in tournament * ipo price -->
         <md-table-cell class="text-left">$ Remaining (At IPO Price)</md-table-cell>
         <md-table-cell>{{getRemainingTeamIpoPrice() | toCurrency}}</md-table-cell>
+      </md-table-row>
+
+      <md-table-row>
+        <md-table-cell class="text-left">Profit/Loss</md-table-cell>
+        <md-table-cell>{{(getDividendTotal() - (entry.ipoCashSpent + entry.secondaryMarketCashSpent)) | toCurrency}}</md-table-cell>
       </md-table-row>
 
       <md-table-row>
@@ -169,7 +169,8 @@ export default {
                       wins,
                       losses,
                       ties
-                    }
+                    },
+                    numStocksInCirculation
                   }
                 }
               `,
@@ -223,6 +224,13 @@ export default {
         return result;
       }, 0);
     },
+    truncateDecimals(number, digits) {
+      const multiplier = Math.pow(10, digits);
+      const adjustedNum = number * multiplier;
+      const truncatedNum = Math[adjustedNum < 0 ? 'ceil' : 'floor'](adjustedNum);
+
+      return truncatedNum / multiplier;
+    },
     getDividendTotal() {
       const milestoneTeamData = this.tournamentTeamData.filter(teamData => teamData.milestoneData);
       if(milestoneTeamData.length === 0) {
@@ -230,11 +238,12 @@ export default {
       } else {
         const milestoneList = milestoneTeamData.map((team) => {
           const dataList = team.milestoneData.reduce((_result, _data) => {
+            const dividendPrice = this.truncateDecimals(_data.dividendPrice / team.numStocksInCirculation, 2);
             const tournamentTeamId = team.id;
             if(!_result[tournamentTeamId]) {
-              _result[tournamentTeamId] = _data.dividendPrice;
+              _result[tournamentTeamId] = dividendPrice;
             } else {
-              _result[tournamentTeamId] += _data.dividendPrice;
+              _result[tournamentTeamId] += dividendPrice;
             }
             return _result;
           }, {});

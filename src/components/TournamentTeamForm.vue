@@ -10,8 +10,14 @@
         <md-table-cell md-label="Price" md-sort-by="price">
           $<input :ref="'priceInput-' + item.id" @change="updateInput(item.id)" class="price-input" type="number" step="1" min="0" max="" :value="item.price">
         </md-table-cell>
-        <md-table-cell md-label="Seed" md-sort-by="seed">
+        <md-table-cell v-if="league.defaultSettings.useSeed" md-label="Seed" md-sort-by="seed">
           <input :ref="'seedInput-' + item.id" @change="updateInput(item.id)" class="seed-input" type="number" step="1" min="1" max="" :value="item.seed">
+        </md-table-cell>
+        <md-table-cell v-if="league.defaultSettings.regions && league.defaultSettings.regions.length" md-label="Region">
+          <select :ref="'regionInput-' + item.id" @change="updateInput(item.id)">
+            <option :value="item.region" selected>{{item.region}}</option>
+            <option v-for="region in league.defaultSettings.regions.filter(_region => _region !== item.region)" :key="region" :value="region">{{region}}</option>
+          </select>
         </md-table-cell>
       </md-table-row>
     </md-table>
@@ -26,7 +32,6 @@
 </template>
 
 <script>
-/* eslint-disable */
 import { apolloClient } from "../main";
 import gql from 'graphql-tag';
 
@@ -40,6 +45,7 @@ export default {
       inputError: null,
       tournamentTeamData: null,
       serverError: null,
+      league: null,
       httpWait: false
     }
   },
@@ -66,6 +72,7 @@ export default {
             price: parseFloat(team.price),
             teamId: team.id,
             seed: parseFloat(team.seed),
+            region: team.region,
             tournamentId: this.tournamentId
           };
           try {
@@ -105,7 +112,8 @@ export default {
               teamId,
               teamName,
               seed,
-              ipoPrice
+              ipoPrice,
+              region
             }
           }
         `,
@@ -136,11 +144,13 @@ export default {
       this.tournamentTeams = this.leagueTeams.map((team) => {
         const price = 0;
         const seed = 1;
+        const region = this.league.defaultSettings.regions && this.league.defaultSettings.regions.length ? this.league.defaultSettings.regions[0] : null;
 
         return {
           ...team,
           price,
-          seed
+          seed,
+          region
         }
       }).map((_team) => {
         const foundTeam = this.tournamentTeamData.find(tournamentTeam => {
@@ -149,6 +159,7 @@ export default {
         if(foundTeam) {
           _team.price = foundTeam.ipoPrice;
           _team.seed = foundTeam.seed;
+          _team.region = foundTeam.region;
         }
 
         return {
@@ -156,15 +167,45 @@ export default {
         }
       });
     },
+    async fetchLeague() {
+      const response = await apolloClient.query({
+        fetchPolicy: 'no-cache',
+        query: gql`
+          query League($id: ID!) {
+            league(id: $id) {
+              id
+              name,
+              defaultSettings {
+                ipoBudget,
+                secondaryMarketBudget,
+                milestones {
+                  name
+                },
+                regions,
+                useSeed
+              }
+            }
+          }
+        `,
+        variables: {
+          id: this.leagueId
+        }
+      });
+
+      this.league = response.data.league;
+    },
     updateInput(id) {
       const priceInputValue = this.$refs['priceInput-' + id].value;
       const seedInputValue = this.$refs['seedInput-' + id].value;
+      const regionInputValue = this.$refs['regionInput-' + id].value;
       const index = this.tournamentTeams.findIndex(team => team.id === id);
       this.tournamentTeams[index].price = priceInputValue;
       this.tournamentTeams[index].seed = seedInputValue;
+      this.tournamentTeams[index].region = regionInputValue;
     }
   },
   async created() {
+    await this.fetchLeague();
     await this.fetchIpoData();
     await this.fetchLeagueTeams();
     this.isPageReady = true;
