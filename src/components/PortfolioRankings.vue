@@ -2,7 +2,7 @@
   <div v-if="isPageReady">
     <h2>Portfolio Rankings</h2>
 
-    <md-table md-sort="percentMoneyWonInvested" md-sort-order="desc" v-model="portfolioSummaries">      
+    <md-table md-sort="percentMoneyWonInvested" md-sort-order="desc" v-model="portfolioSummaries">
       <md-table-row class="text-left link" @click="showRankDetailModal = true, selectedEntry = item" slot="md-table-row" slot-scope="{ item, index }">
         <md-table-cell md-label="Rank">{{ index + 1 }}</md-table-cell>
         <md-table-cell md-label="Owner" md-sort-by="ownerName">{{ item.ownerName }}</md-table-cell>
@@ -171,7 +171,8 @@ export default {
               name,
               tournamentId,
               ipoCashSpent,
-              secondaryMarketCashSpent
+              secondaryMarketCashSpent,
+              secondaryMarketCashIncome
             }
           }
         `,

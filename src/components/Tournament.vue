@@ -21,7 +21,7 @@
           <div class="text-left">
             <h4>Tournament Settings</h4>
             <div>IPO Budget: {{tournament.settings.ipoBudget | toCurrency}}</div>
-            <div>Secondary Market Budget: 
+            <div>Secondary Market Budget:
               <span v-if="tournament.settings.secondaryMarketBudget">{{tournament.settings.secondaryMarketBudget | toCurrency}}</span>
               <span v-else>Unlimited</span>
             </div>
@@ -484,7 +484,8 @@ export default {
               name,
               tournamentId,
               ipoCashSpent,
-              secondaryMarketCashSpent
+              secondaryMarketCashSpent,
+              secondaryMarketCashIncome
             }
           }
         `,

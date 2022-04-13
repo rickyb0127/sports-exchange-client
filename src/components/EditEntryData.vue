@@ -26,6 +26,7 @@
             <md-card-content>
               <div>IPO Cash Spent: <input ref="ipoCashSpent" :value="ipoCashSpent" /></div>
               <div>Secondary Market Cash Spent: <input ref="secondaryMarketCashSpent" :value="secondaryMarketCashSpent" /></div>
+              <div>Secondary Market Cash Income: <input ref="secondaryMarketCashIncome" :value="secondaryMarketCashIncome" /></div>
             </md-card-content>
 						<md-button @click="saveCashInput()" class="md-primary">Save New Cash Values</md-button>
           </div>
@@ -67,7 +68,7 @@
 						<label>Quantity to Delete</label>
 						<md-input v-model="numStocksToDeleteOrTrade" type="number" min="1" :max="maxNumStocksToDelete"></md-input>
 					</md-field>
-          * Only stocks that aren't linked to cash trades can be safely deleted as of now. After stock deletion, the entry's IPO cash spent will automatically be updated to reflect the change 
+          * Only stocks that aren't linked to cash trades can be safely deleted as of now. After stock deletion, the entry's IPO cash spent will automatically be updated to reflect the change
 				</div>
       </md-dialog-content>
       <md-card-actions>
@@ -128,6 +129,7 @@ export default {
 			successMessage: null,
       ipoCashSpent: null,
       secondaryMarketCashSpent: null,
+      secondaryMarketCashIncome: null,
 			stocks: [],
 			showDeleteStockModal: false,
 			showManualTradeModal: false,
@@ -185,6 +187,13 @@ export default {
       if(val && this.isPageReady) {
         Vue.nextTick(() => {
           this.$refs.secondaryMarketCashSpent.value = val;
+        });
+      }
+    },
+    secondaryMarketCashIncome(val) {
+      if(val && this.isPageReady) {
+        Vue.nextTick(() => {
+          this.$refs.secondaryMarketCashIncome.value = val;
         });
       }
     }
@@ -282,7 +291,8 @@ export default {
               name,
               tournamentId,
               ipoCashSpent,
-              secondaryMarketCashSpent
+              secondaryMarketCashSpent,
+              secondaryMarketCashIncome
             }
           }
         `,
@@ -297,34 +307,39 @@ export default {
       const userEntry = entries.filter(entry => entry.id === this.selectedEntry.id)[0];
       this.ipoCashSpent = userEntry.ipoCashSpent;
       this.secondaryMarketCashSpent = userEntry.secondaryMarketCashSpent;
+      this.secondaryMarketCashIncome = userEntry.secondaryMarketCashIncome;
     },
 		async saveCashInput() {
       const ipoCashSpent = parseFloat(this.$refs.ipoCashSpent.value);
       const secondaryMarketCashSpent = parseFloat(this.$refs.secondaryMarketCashSpent.value);
-      if(!isNaN(ipoCashSpent) && !isNaN(secondaryMarketCashSpent)) {
+      const secondaryMarketCashIncome = parseFloat(this.$refs.secondaryMarketCashIncome.value);
+      if(!isNaN(ipoCashSpent) && !isNaN(secondaryMarketCashSpent) && !isNaN(secondaryMarketCashIncome)) {
         const response = await apolloClient.mutate({
           fetchPolicy: 'no-cache',
           mutation: gql`
-            mutation updateEntryCashSpent($entryId: ID!, $ipoCashSpent: Float!, $secondaryMarketCashSpent: Float!) {
-              updateEntryCashSpent(entryId: $entryId, ipoCashSpent: $ipoCashSpent, secondaryMarketCashSpent: $secondaryMarketCashSpent) {
+            mutation updateEntryCash($entryId: ID!, $ipoCashSpent: Float!, $secondaryMarketCashSpent: Float!, $secondaryMarketCashIncome: Float!,) {
+              updateEntryCash(entryId: $entryId, ipoCashSpent: $ipoCashSpent, secondaryMarketCashSpent: $secondaryMarketCashSpent, secondaryMarketCashIncome: $secondaryMarketCashIncome) {
                 id,
                 ipoCashSpent,
-                secondaryMarketCashSpent
+                secondaryMarketCashSpent,
+                secondaryMarketCashIncome
               }
             }
           `,
           variables: {
             entryId: this.selectedEntry.id,
             ipoCashSpent,
-            secondaryMarketCashSpent
+            secondaryMarketCashSpent,
+            secondaryMarketCashIncome
           }
         });
 
-        const updatedEntry = response.data.updateEntryCashSpent;
+        const updatedEntry = response.data.updateEntryCash;
 
         await this.refreshData();
         this.ipoCashSpent = updatedEntry.ipoCashSpent;
         this.secondaryMarketCashSpent = updatedEntry.secondaryMarketCashSpent;
+        this.secondaryMarketCashIncome = updatedEntry.secondaryMarketCashIncome;
         this.successMessage = `Successfully updated cash spent`;
       }
 		},
@@ -357,7 +372,8 @@ export default {
               deleteStocks(entryId: $entryId, stockIds: $stockIds) {
                 id,
                 ipoCashSpent,
-                secondaryMarketCashSpent
+                secondaryMarketCashSpent,
+                secondaryMarketCashIncome
               }
             }
           `,
@@ -372,6 +388,7 @@ export default {
         await this.refreshData();
         this.ipoCashSpent = updatedEntry.ipoCashSpent;
         this.secondaryMarketCashSpent = updatedEntry.secondaryMarketCashSpent;
+        this.secondaryMarketCashIncome = updatedEntry.secondaryMarketCashIncome;
         this.successMessage = `Successfully deleted stocks`;
       }
 		},
@@ -386,7 +403,8 @@ export default {
               manualTrade(entryId: $entryId, stockIds: $stockIds, receivingEntryId: $receivingEntryId, pricePerStock: $pricePerStock) {
                 id,
                 ipoCashSpent,
-                secondaryMarketCashSpent
+                secondaryMarketCashSpent,
+                secondaryMarketCashIncome
               }
             }
           `,
@@ -430,6 +448,7 @@ export default {
     await this.fetchTournamentInfo();
 		this.ipoCashSpent = this.selectedEntry.ipoCashSpent;
 		this.secondaryMarketCashSpent = this.selectedEntry.secondaryMarketCashSpent;
+    this.secondaryMarketCashIncome = this.selectedEntry.secondaryMarketCashIncome;
     this.isPageReady = true;
   }
 }

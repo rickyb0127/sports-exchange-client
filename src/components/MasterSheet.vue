@@ -40,6 +40,12 @@
             </template>
           </md-table-row>
           <md-table-row>
+            <md-table-cell>Secondary Market Cash Income</md-table-cell>
+            <template v-for="entry in masterSheetEntryStockData">
+              <md-table-cell :key="entry.id">{{entry.secondaryMarketCashIncome | toCurrency}}</md-table-cell>
+            </template>
+          </md-table-row>
+          <md-table-row>
             <md-table-cell>Dividend Payout</md-table-cell>
             <template v-for="entry in masterSheetEntryStockData">
               <md-table-cell :key="entry.id">{{entry.dividendPayout | toCurrency}}</md-table-cell>

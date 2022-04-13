@@ -42,11 +42,12 @@
               <div>IPO Budget: {{ipoBudget | toCurrency}}</div>
               <div>IPO Budget Spent: {{selectedEntry.ipoCashSpent | toCurrency}}</div>
               <div>
-                Secondary Market Budget: 
+                Secondary Market Budget:
                 <span v-if="secondaryMarketBudget">{{secondaryMarketBudget | toCurrency}}</span>
                 <span v-else>Unlimited</span>
               </div>
               <div>Secondary Market Spent: {{selectedEntry.secondaryMarketCashSpent | toCurrency}}</div>
+              <div>Secondary Market Income: {{selectedEntry.secondaryMarketCashIncome | toCurrency}}</div>
             </div>
             <div v-if="contentToShow === 'ipo'">
               <ipo v-if="isTournamentIpoOpen" :tournament-id="selectedEntry.tournamentId" :entry-id="selectedEntry.id" :ipo-budget="ipoBudget" :ipo-cash-spent.sync="selectedEntry.ipoCashSpent"></ipo>
@@ -155,7 +156,8 @@ export default {
                 stockPayoutSheetUpload
               },
               ipoCashSpent,
-              secondaryMarketCashSpent
+              secondaryMarketCashSpent,
+              secondaryMarketCashIncome
             }
           }
         `,
@@ -166,7 +168,7 @@ export default {
 
       this.entries = response.data.userEntries;
       this.entries = this.entries.filter(entry => entry.tournament.isActive);
-      
+
       if(!this.entryId) {
         if(this.entries.length === 1) {
           this.selectedEntry = this.entries[0];
@@ -176,7 +178,7 @@ export default {
       }
     },
     goToPortfolio() {
-      this.$router.push({ 
+      this.$router.push({
         name: "Portfolio",
         params: {
           entryId: this.selectedEntry.id

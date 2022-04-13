@@ -144,7 +144,8 @@ export default {
                 tournamentId,
                 name,
                 ipoCashSpent,
-                secondaryMarketCashSpent
+                secondaryMarketCashSpent,
+                secondaryMarketCashIncome
               }
             }
           `,
