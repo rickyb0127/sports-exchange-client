@@ -2,10 +2,10 @@
   <div v-if="isPageReady">
     <h2>Portfolio Rankings</h2>
 
-    <md-table md-sort="percentMoneyWonInvested" md-sort-order="desc" v-model="portfolioEntries">
+    <md-table md-sort="percentMoneyWonInvested" md-sort-order="desc" v-model="portfolioSummaries">      
       <md-table-row class="text-left link" @click="showRankDetailModal = true, selectedEntry = item" slot="md-table-row" slot-scope="{ item, index }">
         <md-table-cell md-label="Rank">{{ index + 1 }}</md-table-cell>
-        <md-table-cell md-label="Owner" md-sort-by="owner">{{ item.owner }}</md-table-cell>
+        <md-table-cell md-label="Owner" md-sort-by="ownerName">{{ item.ownerName }}</md-table-cell>
 				<md-table-cell md-label="Entry Name" md-sort-by="entryName">{{ item.entryName }}</md-table-cell>
 				<md-table-cell md-label="Total $ IPO Investment" md-sort-by="totalInitialInvestment">{{ item.totalInitialInvestment | toCurrency }}</md-table-cell>
 				<md-table-cell md-label="Total IPO Shares Purchased" md-sort-by="totalInitialStocksOwned">{{ item.totalInitialStocksOwned }}</md-table-cell>
@@ -27,7 +27,7 @@
       <md-dialog-content>
         <div class="section">
           <div class="section-header">Owner</div>
-          <div>{{selectedEntry.owner}}</div>
+          <div>{{selectedEntry.ownerName}}</div>
         </div>
         <div class="section">
           <div class="section-header">Total $ IPO Investment</div>
@@ -100,9 +100,9 @@ export default {
   data() {
     return {
       isPageReady: false,
-			portfolioEntries: [],
       showRankDetailModal: false,
-      selectedEntry: null
+      selectedEntry: null,
+      portfolioSummaries: []
     }
   },
   props: {
@@ -114,71 +114,52 @@ export default {
     }
   },
   watch: {
-    async entryId(newVal, oldVal) {
+    async tournamentId(newVal, oldVal) {
       if(newVal && newVal !== oldVal) {
         await this.init();
       }
     }
   },
   methods: {
-		async getStocks(entryId) {
-      const response = await apolloClient.query({
-        fetchPolicy: 'no-cache',
-        query: gql`
-          query StocksByEntryId($entryId: ID!) {
-            stocksByEntryId(entryId: $entryId) {
-              teamName,
-              ipoPrice,
-              quantity,
-              teamId,
-              tournamentTeamId
+    async fetchPortfolioSummaries(entryId) {
+      try {
+        const response = await apolloClient.query({
+          fetchPolicy: 'no-cache',
+          query: gql`
+            query PortfolioSummaries($tournamentId: ID!, $entryId: ID) {
+              portfolioSummaries(tournamentId: $tournamentId, entryId: $entryId) {
+                ownerName,
+                entryName,
+                totalInitialInvestment,
+                totalInitialStocksOwned,
+                totalCurrentStocksOwned,
+                stocksRemaining,
+                percentStocksRemaining,
+                totalCurrentTeamsOwned,
+                totalCurrentTeamsRemaining,
+                moneyWonToDate,
+                percentMoneyWonInvested,
+                originalMoneyRemaining,
+                profitLoss,
+                percentMoneyRemaining
+              }
             }
+          `,
+          variables: {
+            tournamentId: this.tournamentId,
+            entryId
           }
-        `,
-        variables: {
-          entryId
+        });
+
+        return response.data.portfolioSummaries[0];
+      } catch(err) {
+        if(err.graphQLErrors && err.graphQLErrors.length > 0) {
+          this.errorMessage = err.graphQLErrors[0].message;
+        } else {
+          this.errorMessage = "Server Error";
         }
-      });
-
-      return response.data.stocksByEntryId;
-    },
-		async fetchTournamentTeams(tournamentTeamStocks) {
-			let tournamentTeamData = [];
-
-			for(const stock of tournamentTeamStocks) {
-				const teamId = stock.teamId;
-				const response = await apolloClient.query({
-				fetchPolicy: 'no-cache',
-					query: gql`
-						query TournamentTeamByTeamId($tournamentId: ID!, $teamId: ID!) {
-							tournamentTeamByTeamId(tournamentId: $tournamentId, teamId: $teamId) {
-								id,
-								teamId,
-								teamName,
-								isEliminated,
-								milestoneData {
-									milestoneId,
-									milestoneName,
-									dividendPrice,
-									wins,
-									losses,
-									ties
-								},
-								numStocksInCirculation
-							}
-						}
-					`,
-					variables: {
-						tournamentId: this.tournamentId,
-						teamId
-					}
-				});
-
-				const data = response.data.tournamentTeamByTeamId;
-				tournamentTeamData.push(data);
-			}
-
-			return tournamentTeamData;
+        return err;
+      }
     },
 		async fetchEntries() {
 			const response = await apolloClient.query({
@@ -201,195 +182,12 @@ export default {
 
       return response.data.entriesByTournamentId;
 		},
-		async getOwnersByEntry(entryId) {
-      const response = await apolloClient.query({
-        fetchPolicy: 'no-cache',
-        query: gql`
-          query usersByEntryId($entryId: ID!) {
-            usersByEntryId(entryId: $entryId) {
-              id,
-              firstname,
-              lastname,
-              email
-            }
-          }
-        `,
-        variables: {
-          entryId
-        }
-      });
-
-			let ownerString = `${response.data.usersByEntryId[0].firstname} ${response.data.usersByEntryId[0].lastname}`;
-			if(response.data.usersByEntryId.length > 1) {
-				for(let i = 1; i < response.data.usersByEntryId.length; i++) {
-					ownerString += `, ${response.data.usersByEntryId[i].firstname} ${response.data.usersByEntryId[i].lastname}`;
-				}
-			}
-
-      return ownerString;
-    },
-		async getNumOriginallyPurchasedStocks(entryId) {
-      const response = await apolloClient.query({
-        fetchPolicy: 'no-cache',
-        query: gql`
-          query GetOriginallyPurchasedStocks($entryId: ID!) {
-            getOriginallyPurchasedStocks(entryId: $entryId) {
-              id,
-              tournamentTeamId,
-              price,
-              originalIpoEntryId
-            }
-          }
-        `,
-        variables: {
-          entryId
-        }
-      });
-
-      return response.data.getOriginallyPurchasedStocks.length;
-    },
-		async getNumCurrentStocks(entryId) {
-      const response = await apolloClient.query({
-        fetchPolicy: 'no-cache',
-        query: gql`
-          query StocksByEntryId($entryId: ID!) {
-            stocksByEntryId(entryId: $entryId) {
-              teamName,
-              teamId,
-              tournamentTeamId,
-              ipoPrice,
-              quantity
-            }
-          }
-        `,
-        variables: {
-          entryId
-        }
-      });
-
-			return response.data.stocksByEntryId.reduce((result, stock) => {
-        result += stock.quantity;
-        return result;
-      }, 0);
-    },
-		async getNumSharesRemaining(entryId) {
-			const tournamentTeamStocks = await this.getStocks(entryId);
-			const tournamentTeamData = await this.fetchTournamentTeams(tournamentTeamStocks);
-			const remainingTeams = tournamentTeamData.filter(teamData => !teamData.isEliminated);
-      const remainingTeamIds = remainingTeams.map(team => team.teamId);
-
-      return tournamentTeamStocks.reduce((result, teamStock) => {
-        const found = remainingTeamIds.find(id => id === teamStock.teamId);
-        if(found) {
-          result += teamStock.quantity;
-        }
-        return result;
-      }, 0);
-    },
-		async getNumTeamsRemaining(entryId) {
-			const tournamentTeamStocks = await this.getStocks(entryId);
-			const tournamentTeamData = await this.fetchTournamentTeams(tournamentTeamStocks);
-			const remainingTeams = tournamentTeamData.filter(teamData => !teamData.isEliminated);
-			return remainingTeams.length;
-		},
-    truncateDecimals(number, digits) {
-      const multiplier = Math.pow(10, digits);
-      const adjustedNum = number * multiplier;
-      const truncatedNum = Math[adjustedNum < 0 ? 'ceil' : 'floor'](adjustedNum);
-
-      return truncatedNum / multiplier;
-    },
-		async getDividendTotal(entryId) {
-			const tournamentTeamStocks = await this.getStocks(entryId);
-			const tournamentTeamData = await this.fetchTournamentTeams(tournamentTeamStocks);
-      const milestoneTeamData = tournamentTeamData.filter(teamData => teamData.milestoneData);
-      if(milestoneTeamData.length === 0) {
-        return 0;
-      } else {
-        const milestoneList = milestoneTeamData.map((team) => {
-          const dataList = team.milestoneData.reduce((_result, _data) => {
-            const dividendPrice = this.truncateDecimals(_data.dividendPrice / team.numStocksInCirculation, 2);
-            const tournamentTeamId = team.id;
-            if(!_result[tournamentTeamId]) {
-              _result[tournamentTeamId] = dividendPrice;
-            } else {
-              _result[tournamentTeamId] += dividendPrice;
-            }
-            return _result;
-          }, {});
-
-          return dataList;
-        });
-
-        const total = milestoneList.reduce((result, _data) => {
-          const found = tournamentTeamStocks.find(teamStock => teamStock.tournamentTeamId === Object.keys(_data)[0]);
-          if(found) {
-            const multiplier = found.quantity;
-            result += (Object.values(_data)[0] * multiplier);
-          }
-          return result;
-        }, 0);
-
-        return total;
-      }
-    },
-		async getRemainingStocksIPOValue(entryId) {
-			const tournamentTeamStocks = await this.getStocks(entryId);
-			const tournamentTeamData = await this.fetchTournamentTeams(tournamentTeamStocks);
-			const remainingTeams = tournamentTeamData.filter(teamData => !teamData.isEliminated);
-
-      const stocksRemaining = remainingTeams.reduce((result, team) => {
-        const found = tournamentTeamStocks.find(stock => stock.teamId === team.teamId);
-        if(found) {
-          result.push(found);
-        }
-
-        return result;
-      }, []);
-
-      return stocksRemaining.reduce((result, stock) => {
-        result += (stock.ipoPrice * stock.quantity);
-        return result;
-      }, 0);
-    },
 		async init() {
 			const entries = await this.fetchEntries();
 
-			this.portfolioEntries = await Promise.all(
+			this.portfolioSummaries = await Promise.all(
 				entries.map(async (entry) => {
-					const teamStocks = await this.getStocks(entry.id);
-
-					const owner = await this.getOwnersByEntry(entry.id);
-					const entryName = entry.name; 
-					const totalInitialInvestment = entry.ipoCashSpent; 
-					const totalInitialStocksOwned = await this.getNumOriginallyPurchasedStocks(entry.id); 
-					const totalCurrentStocksOwned = await this.getNumCurrentStocks(entry.id); 
-					const stocksRemaining = await this.getNumSharesRemaining(entry.id); 
-					const percentStocksRemaining = (stocksRemaining/totalCurrentStocksOwned) * 100;
-					const totalCurrentTeamsOwned = teamStocks.length; 
-					const totalCurrentTeamsRemaining = await this.getNumTeamsRemaining(entry.id); 
-					const moneyWonToDate = await this.getDividendTotal(entry.id); 
-					const percentMoneyWonInvested = (moneyWonToDate / totalInitialInvestment) * 100; 
-					const profitLoss = moneyWonToDate - (entry.ipoCashSpent + entry.secondaryMarketCashSpent); 
-					const originalMoneyRemaining = await this.getRemainingStocksIPOValue(entry.id); 
-					const percentMoneyRemaining = (originalMoneyRemaining / totalInitialInvestment) * 100;
-
-					return {
-						owner,
-						entryName,
-						totalInitialInvestment,
-						totalInitialStocksOwned,
-						totalCurrentStocksOwned,
-						stocksRemaining,
-						percentStocksRemaining,
-						totalCurrentTeamsOwned,
-						totalCurrentTeamsRemaining,
-						moneyWonToDate,
-						percentMoneyWonInvested,
-						profitLoss,
-						originalMoneyRemaining,
-						percentMoneyRemaining
-					}
+          return await this.fetchPortfolioSummaries(entry.id);
 				})
 			);
 		}

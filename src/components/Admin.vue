@@ -96,7 +96,7 @@ export default {
           }
         `,
         variables: {
-          leagueName: "ncaa-mens-basketball-march-madness-2022"
+          leagueName: "nba-playoffs-2022"
         }
       });
     },
