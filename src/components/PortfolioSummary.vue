@@ -28,7 +28,7 @@
 
       <md-table-row>
         <md-table-cell class="text-left">% Stocks Remaining</md-table-cell>
-        <md-table-cell>{{(portfolioSummary.percentStocksRemaining * 100).toFixed(2)}}%</md-table-cell>
+        <md-table-cell>{{(portfolioSummary.percentStocksRemaining).toFixed(2)}}%</md-table-cell>
       </md-table-row>
 
       <md-table-row>
@@ -48,7 +48,7 @@
 
       <md-table-row>
         <md-table-cell class="text-left">Won % Money Invested</md-table-cell>
-        <md-table-cell>{{(portfolioSummary.percentMoneyWonInvested * 100).toFixed(2)}}%</md-table-cell>
+        <md-table-cell>{{(portfolioSummary.percentMoneyWonInvested).toFixed(2)}}%</md-table-cell>
       </md-table-row>
 
       <md-table-row>
@@ -63,7 +63,7 @@
 
       <md-table-row>
         <md-table-cell class="text-left">$ Remaining % Money Invested</md-table-cell>
-        <md-table-cell>{{(portfolioSummary.percentMoneyRemaining * 100).toFixed(2)}}%</md-table-cell>
+        <md-table-cell>{{(portfolioSummary.percentMoneyRemaining).toFixed(2)}}%</md-table-cell>
       </md-table-row>
     </md-table>
   </div>
